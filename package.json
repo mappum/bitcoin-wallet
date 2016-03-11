@@ -1,0 +1,19 @@
+{
+  "name": "bitcoin-wallet",
+  "version": "0.0.0",
+  "description": "Sends and receives bitcoins",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "webcoin",
+    "bitcoin",
+    "wallet",
+    "send",
+    "receive",
+    "money"
+  ],
+  "author": "Matt Bell <mappum@gmail.com>",
+  "license": "MIT"
+}
