@@ -1,6 +1,6 @@
 {
   "name": "bitcoin-wallet",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Sends and receives bitcoins",
   "main": "index.js",
   "scripts": {
