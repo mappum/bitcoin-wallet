@@ -19,7 +19,12 @@
   "dependencies": {
     "async": "^1.5.2",
     "bitcoin-util": "^2.0.0",
-    "bitcoinjs-lib": "^2.2.0"
+    "bitcoinjs-lib": "^2.2.0",
+    "flush-write-stream": "^1.0.0",
+    "inherits": "^2.0.1",
+    "level-sublevel": "^6.5.4",
+    "level-transactions": "^1.5.3",
+    "through2": "^2.0.1"
   },
   "devDependencies": {},
   "repository": {
