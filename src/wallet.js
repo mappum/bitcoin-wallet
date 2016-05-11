@@ -12,8 +12,9 @@ var debug = require('debug')('bitcoin-wallet')
 var inherits = require('inherits')
 var pumpify = require('pumpify').obj
 var sublevel = require('level-sublevel')
-var transaction = require('level-transactions')
+var through = require('through2').obj
 var to = require('flush-write-stream').obj
+var transaction = require('level-transactions')
 var createFilterStream = require('./filterStream.js')
 var pkg = require('../package.json')
 
@@ -112,9 +113,28 @@ Wallet.prototype.createKey = function (cb) {
 }
 
 Wallet.prototype.createWriteStream = function () {
+  var expectedBlock = {
+    height: this.sync.height + 1,
+    prevHash: this.sync.hash ? new Buffer(this.sync.hash, 'base64') : null
+  }
+  var syncCheckStream = through((block, enc, cb) => {
+    // TODO: handle reorgs (blockchain readStream should output reorg info)
+    if (block.height !== expectedBlock.height) {
+      return cb(new Error(`Expected block with height ${expectedBlock.height}, ` +
+        `got height ${block.height}`))
+    }
+    expectedBlock.height++
+    if (expectedBlock.prevHash &&
+    !block.header.prevHash.equals(expectedBlock.prevHash)) {
+      return cb(new Error(`Expected block to have prevHash=${expectedBlock.prevHash.toString('hex')}, ` +
+        `got prevHash=${block.header.getHash().toString('hex')}`))
+    }
+    expectedBlock.prevHash = block.header.getHash()
+    cb(null, block)
+  })
   var filterStream = createFilterStream(this.keys)
   var processStream = to((block, enc, cb) => this.processBlock(block, cb))
-  var writeStream = pumpify(filterStream, processStream)
+  var writeStream = pumpify(syncCheckStream, filterStream, processStream)
   writeStream.on('error', this._error.bind(this))
   return writeStream
 }
