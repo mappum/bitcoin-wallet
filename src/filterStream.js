@@ -35,7 +35,9 @@ class FilterStream extends TransformStream {
     async.forEachOf(tx.ins, (input, index, cb) => {
       this.getInputKey(input, (err, key) => {
         if (err) return cb(err)
-        if (key) relevant.ins.push(Object.assign({ key, index }, input))
+        if (key != null) {
+          relevant.ins.push(Object.assign({ key, index }, input))
+        }
         cb(null)
       })
     }, (err) => {
@@ -43,7 +45,9 @@ class FilterStream extends TransformStream {
       async.forEachOf(tx.outs, (output, index, cb) => {
         this.getOutputKey(output, (err, key) => {
           if (err) return cb(err)
-          if (key) relevant.outs.push(Object.assign({ key, index }, output))
+          if (key != null) {
+            relevant.outs.push(Object.assign({ key, index }, output))
+          }
           cb(null)
         })
       }, (err) => {
@@ -63,11 +67,9 @@ class FilterStream extends TransformStream {
       return cb(null, null)
     }
     var pubkey = Script.decompile(redeemScript)[0]
-    this.keys.get(pubkey.toString('base64'), (err, index) => {
+    this.keys.get(pubkey.toString('base64'), (err, keyIndex) => {
       if (err && !err.notFound) return cb(err)
-      index = +index
-      var key = this._derive(index)
-      return cb(null, key)
+      return cb(null, +keyIndex)
     })
   }
 
@@ -76,11 +78,9 @@ class FilterStream extends TransformStream {
       return cb(null, null)
     }
     var scriptHash = Script.decompile(output.script)[1]
-    this.keys.get(scriptHash.toString('base64'), (err, index) => {
+    this.keys.get(scriptHash.toString('base64'), (err, keyIndex) => {
       if (err && !err.notFound) return cb(err)
-      index = +index
-      var key = this._derive(index)
-      return cb(null, { key, index })
+      return cb(null, keyIndex ? +keyIndex : null)
     })
   }
 }
