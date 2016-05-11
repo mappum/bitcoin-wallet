@@ -89,8 +89,8 @@ Wallet.prototype.onceReady = function (cb) {
 }
 
 Wallet.prototype.getAddress = function (key) {
-  var output = this._receiveScript(key.getPublicKeyBuffer())
-  return Address.toBase58Check(hash160(output), this.params.scriptHash)
+  var redeem = this._redeemScript(key.getPublicKeyBuffer())
+  return Address.toBase58Check(hash160(redeem), this.params.scriptHash)
 }
 
 Wallet.prototype.createAddress = function (cb) {
@@ -138,19 +138,19 @@ Wallet.prototype.processBlock = function (data, cb) {
     var hash = tx.tx.getHash().toString('base64')
     txHashes.push(hash)
     // TODO: decide: should we be storing whole transaction or only relevant ins/outs?
-    db.put(hash, tx.tx.toBuffer(), { prefix: this.transactions })
+    db.put(hash, tx.tx.toBuffer(), { prefix: this.transactions, valueEncoding: 'binary' })
 
     for (let input of tx.relevant.ins) {
       db.del(`${input.hash.toString('base64')}:${input.index}`, { prefix: this.unspent })
     }
 
     for (let output of tx.relevant.outs) {
-      db.put(`${hash}:${output.outpoint.index}`, output, { prefix: this.unspent })
+      db.put(`${hash}:${output.index}`, output, { prefix: this.unspent })
       highestKey = Math.max(highestKey, output.key.index)
     }
   }
 
-  db.put(data.block.getHash().toString('base64'), txHashes, { prefix: this.blocks })
+  db.put(data.block.header.getHash().toString('base64'), txHashes, { prefix: this.blocks })
   // TODO: save in binary
 
   this.sync.keys.used = highestKey + 1
@@ -271,21 +271,16 @@ Wallet.prototype._redeemScript = function (pubkey) {
   return Script.pubKeyOutput(pubkey)
 }
 
-Wallet.prototype._receiveScript = function (pubkey) {
-  var redeem = this._redeemScript(pubkey)
-  return Script.scriptHashOutput(hash160(redeem))
-}
-
 Wallet.prototype._keyElements = function (key) {
   var pubkeyBuffer = key.getPublicKeyBuffer()
-  return [ pubkeyBuffer, this._receiveScript(pubkeyBuffer) ]
+  return [ pubkeyBuffer, hash160(this._redeemScript(pubkeyBuffer)) ]
 }
 
 Wallet.prototype.filterElements = function (cb) {
   this.onceReady(() => {
     var keys = this._deriveRange(0)
     var elements = keys.map(this._keyElements.bind(this))
-    cb(null, Array.prototype.concat.apply([], elements))
+    cb([].concat(...elements))
   })
 }
 
