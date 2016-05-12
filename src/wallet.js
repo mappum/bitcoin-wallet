@@ -182,6 +182,13 @@ Wallet.prototype.processBlock = function (data, cb) {
   })
 }
 
+Wallet.prototype.getSyncState = function () {
+  return {
+    height: this.sync.height,
+    hash: this.sync.hash ? new Buffer(this.sync.hash, 'base64') : null
+  }
+}
+
 Wallet.prototype._loadMeta = function (opts, cb) {
   if (this.ready) return cb(new Error('Cannot call "_loadMeta" after ready'))
   async.map([ 'sync', 'info', 'key' ], this.meta.get.bind(this.meta),
