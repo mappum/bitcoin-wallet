@@ -113,23 +113,28 @@ Wallet.prototype.createKey = function (cb) {
 }
 
 Wallet.prototype.createWriteStream = function () {
-  var expectedBlock = {
+  var nextBlock = {
     height: this.sync.height + 1,
     prevHash: this.sync.hash ? new Buffer(this.sync.hash, 'base64') : null
   }
   var syncCheckStream = through((block, enc, cb) => {
-    // TODO: handle reorgs (blockchain readStream should output reorg info)
-    if (block.height !== expectedBlock.height) {
-      return cb(new Error(`Expected block with height ${expectedBlock.height}, ` +
+    var expectedHeight = nextBlock.height
+    if (!block.add) expectedHeight -= 1
+    if (block.height !== expectedHeight) {
+      return cb(new Error(`Expected block with height ${expectedHeight}, ` +
         `got height ${block.height}`))
     }
-    expectedBlock.height++
-    if (expectedBlock.prevHash &&
-    !block.header.prevHash.equals(expectedBlock.prevHash)) {
-      return cb(new Error(`Expected block to have prevHash=${expectedBlock.prevHash.toString('hex')}, ` +
-        `got prevHash=${block.header.getHash().toString('hex')}`))
+    nextBlock.height = block.height + 1
+
+    if (nextBlock.prevHash) {
+      var hash = block.add ? block.header.prevHash : block.header.getHash()
+      if (!hash.equals(nextBlock.prevHash)) {
+        var propertyName = block.add ? 'prevHash' : 'hash'
+        return cb(new Error(`Expected block to have ${propertyName}=${nextBlock.prevHash.toString('hex')}, ` +
+          `got ${propertyName}=${block.header.prevHash.toString('hex')}`))
+      }
     }
-    expectedBlock.prevHash = block.header.getHash()
+    nextBlock.prevHash = block.header.getHash()
     cb(null, block)
   })
   var filterStream = createFilterStream(this.keys)
@@ -184,8 +189,8 @@ Wallet.prototype.processBlock = function (data, cb) {
 
 Wallet.prototype.getSyncState = function () {
   return {
-    height: this.sync.height,
-    hash: this.sync.hash ? new Buffer(this.sync.hash, 'base64') : null
+    hash: this.sync.hash ? new Buffer(this.sync.hash, 'base64') : null,
+    startTime: this.info.createdAt
   }
 }
 
@@ -223,7 +228,8 @@ Wallet.prototype._initializeMeta = function (opts, cb) {
       }
     }
     this.info = {
-      date: opts.date != null ? opts.date : Date.now(),
+      createdAt: opts.createdAt != null
+        ? opts.createdAt : Math.floor(Date.now() / 1000),
       version: pkg.version
     }
     crypto.randomBytes(64, (err, seed) => {
